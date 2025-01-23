@@ -18,7 +18,6 @@ void setup(void)
     RCC->AHB2ENR |= (1 << 1); // turn on GPIOB
     GPIOB->MODER |= (1 << 6); // Configure GPIOB, bit 3 as an output
     GPIOB->MODER &= ~(1 << 7);
-
 }
 void delay(volatile uint32_t dly)
 {
