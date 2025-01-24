@@ -63,8 +63,8 @@ int readADC(int chan)
     while ( (ADC1->ISR & (1 <<0))==0); // wait for ADC to be ready
     ADC1->CR |= (1 << 2); // start conversion
     while ( (ADC1->ISR & (1 <<3))==0); // wait for conversion to finish
+    ADC1->CR = 0; // disable the ADC
     return ADC1->DR; // return the result
-    ADC1->CR = 0;
 }
 
 void initDAC()
@@ -76,12 +76,10 @@ void initDAC()
     RCC->APB1RSTR1 &= ~(1 << 29); // Take DAC out of reset
     DAC->CR &= ~(1 << 0);         // Enable = 0
     DAC->CR |= (1 << 0);          // Enable = 1
-    
 }
 void writeDAC(int value)
 {
     DAC->DHR12R1 = value;
-
 }
 void delay(volatile uint32_t dly)
 {
