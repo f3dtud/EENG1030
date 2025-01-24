@@ -15,7 +15,7 @@ void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
 void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t AF);
 void initSPI(SPI_TypeDef *spi);
-uint8_t transferSPI(SPI_TypeDef *spi,uint8_t d_out[], uint32_t d_out_len, uint8_t d_in[], uint32_t d_in_len);
+uint8_t spi_exchange(SPI_TypeDef *spi,uint8_t d_out[], uint32_t d_out_len, uint8_t d_in[], uint32_t d_in_len);
 void beginSPITransaction(SPI_TypeDef *spi);
 void endSPITransaction(SPI_TypeDef *spi);
 void delay(volatile uint32_t dly);
@@ -41,33 +41,15 @@ int main()
     setup();
     uint8_t dout[2];
     uint8_t din[10];
+    uint8_t data[]={0xf1,0xe2,0xd3,0xc4,0xb5,0xa6};
 
-
-    dout[0]=0xab;
-    transferSPI(SPI1,dout,1,din,0);
-    delay(20000);
-
-
-    dout[0]=0x06;
-    transferSPI(SPI1,dout,1,din,0);
-    delay(20000);
-
-    dout[0]=0x01; dout[1]=2;
-    transferSPI(SPI1,dout,2,din,0);
-
-
-    dout[0]=0x90;
-    dout[1]=0x34;
+    power_up(SPI1);
+    write_enable(SPI1);
+    //page_program(SPI1,0,data,6);
+    //sector_erase(SPI1,0);
     while(1)
     {
-        //dout[0]=0x90; transferSPI(SPI1,dout,1,din,5);  // read device id
-        //dout[0]=5; transferSPI(SPI1,dout,1,din,1);  // read status
-        dout[0]=5; transferSPI(SPI1,dout,1,din,2);  // read status
-        //dout[0]=0x01; dout[1]=2;
-        //transferSPI(SPI1,dout,2,din,0);
-        delay(200);
-        dout[0]=0x01; dout[1]=2;
-        transferSPI(SPI1,dout,2,din,0);
+        read_data(SPI1,0,din,10);
         delay(200);
     }
 }
@@ -92,19 +74,15 @@ void setup()
 }
 void initSPI(SPI_TypeDef *spi)
 {
-	int drain_count,drain;
-	
+	int drain;	
 	// Now configure the SPI interface
 	drain = spi->SR;				// dummy read of SR to clear MODF	
 	// enable SSM, set SSI, enable SPI, PCLK/2, MSB First Master, Clock = 1 when idle, CPOL=1 (SPI mode 3 overall)   
 	spi->CR1 = (1 << 8)+(1 << 2) +(1 << 1) + (1 << 0) + (1<<3); // Assuming 4MHz default system clock set SPI speed to 1MHz (quite slow)
 	spi->CR2 = (1 << 10)+(1 << 9)+(1 << 8)+(1 << 2); 	// configure for 8 bit operation
-   
-   // for (drain_count = 0; drain_count < 32; drain_count++)
-//		drain = transferSPI(spi,(uint8_t)0x00);
 }
 
-uint8_t transferSPI(SPI_TypeDef *spi,uint8_t d_out[], uint32_t d_out_len, uint8_t d_in[], uint32_t d_in_len)
+uint8_t spi_exchange(SPI_TypeDef *spi,uint8_t d_out[], uint32_t d_out_len, uint8_t d_in[], uint32_t d_in_len)
 {   
     unsigned Timeout = 1000000;
     unsigned index=0;
@@ -188,24 +166,136 @@ void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t A
     }
 }
 int read_electronic_signature(SPI_TypeDef *spi,uint8_t *sig,uint32_t sig_len);
-int write_enable(SPI_TypeDef *spi);
-int write_disable(SPI_TypeDef *spi);
+int write_enable(SPI_TypeDef *spi)
+{
+    uint8_t cmd=0x06;
+    uint8_t rxdata[1];
+	spi_exchange(spi,&cmd,1,rxdata,0); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	return 0;
+}
+int write_disable(SPI_TypeDef *spi)
+{
+    uint8_t cmd=0x04;
+    uint8_t rxdata[1];
+	spi_exchange(spi,&cmd,1,rxdata,0); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	return 0;  
+}
 int read_status_register(SPI_TypeDef *spi,uint8_t *status)
 {    
 	uint8_t cmd=0x05;
 	uint8_t rxdata[2];
 	int ret;
-	//spi_exchange(&cmd,1,rxdata,2); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	spi_exchange(spi,&cmd,1,rxdata,2); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
 	*status=rxdata[1];
 	return 0;
 }
-int write_status_register(SPI_TypeDef *spi,uint8_t status);
-int power_down(SPI_TypeDef *spi);
-int power_up(SPI_TypeDef *spi);
-int read_data(SPI_TypeDef *spi,uint32_t address, uint8_t *data, uint32_t len);
-int page_program(SPI_TypeDef *spi,uint32_t address, uint8_t *data, uint32_t len); // program page.  8LSB's of address should be 0.  len <= 256;
-int sector_erase(SPI_TypeDef *spi,uint32_t sector_address);
-int block_erase(SPI_TypeDef *spi,uint32_t block_address);
-int chip_erase(SPI_TypeDef *spi);
-int busy(SPI_TypeDef *spi);
+int write_status_register(SPI_TypeDef *spi,uint8_t status)
+{
+    uint8_t txdata[2];
+	txdata[0]=0x04;
+	txdata[1]=status;	
+    uint8_t rxdata[1];
+	spi_exchange(spi,txdata,2,rxdata,0); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	return 0;
+}
+int power_down(SPI_TypeDef *spi)
+{
+    uint8_t cmd=0xb9;
+    uint8_t rxdata[1];
+	spi_exchange(spi,&cmd,1,rxdata,0); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	return 0;
+}
+int power_up(SPI_TypeDef *spi)
+{
+    uint8_t cmd=0xab;
+    uint8_t rxdata[1];
+	spi_exchange(spi,&cmd,1,rxdata,0); // should return the values 0xc2 and 0x13 in locations 4 and 5 in sig
+	return 0;
+}
+int read_data(SPI_TypeDef *spi,uint32_t address, uint8_t *data, uint32_t len)
+{
+	uint8_t txdata[4];
+	txdata[0]=0x03;
+	txdata[1]=address>>16;	
+	txdata[2]=(address >> 8) & 0xff;
+	txdata[3]=address & 0xff;	
+    spi_exchange(spi,txdata,4,data,len);	
+	return 0;
+}
+
+int page_program(SPI_TypeDef *spi,uint32_t address, uint8_t *data, uint32_t len) // program page.  8LSB's of address should be 0.  len <= 256;
+{
+    uint8_t txdata[4+len];
+    uint8_t rxdata[1];
+    volatile uint32_t busycount=0;
+	txdata[0]=0x02;
+	txdata[1]=address>>16;	
+	txdata[2]=(address >> 8) & 0xff;
+	txdata[3]=address & 0xff;
+    for (uint32_t i=0;i<len;i++)
+    {
+        txdata[4+i]=data[i];
+    }
+    spi_exchange(spi,txdata,4+len,rxdata,0);	
+	while (busy(spi))
+	{
+		busycount++;
+	}
+	return 0;
+}
+int sector_erase(SPI_TypeDef *spi,uint32_t sector_address)
+{
+    uint8_t txdata[5];
+    uint8_t rxdata[1];
+    volatile uint32_t busycount=0;
+
+	txdata[0]=0x20;
+	txdata[1]=sector_address>>16;	
+	txdata[2]=(sector_address >> 8) & 0xff;
+	txdata[3]=0;
+    spi_exchange(spi,txdata,4,rxdata,0);		
+	while (busy(spi))
+	{
+		busycount++;
+	}
+	return 0;
+}
+int block_erase(SPI_TypeDef *spi,uint32_t block_address)
+{
+    uint8_t txdata[5];
+    uint8_t rxdata[1];
+    volatile uint32_t busycount=0;
+
+    txdata[0]=0x52;
+	txdata[1]=block_address>>16;	
+	txdata[2]=(block_address >> 8) & 0xff;
+	txdata[3]=0;
+    spi_exchange(spi,txdata,4,rxdata,0);		
+	while (busy(spi))
+	{
+		busycount++;
+	}
+	return 0;
+}
+int chip_erase(SPI_TypeDef *spi)
+{
+    uint8_t txdata[5];
+    uint8_t rxdata[1];
+    volatile uint32_t busycount=0;
+    txdata[0]=0x60;	
+    spi_exchange(spi,txdata,1,rxdata,0);		
+	while (busy(spi))
+	{
+		busycount++;
+	}
+	return 0;
+}
+int busy(SPI_TypeDef *spi)
+{
+// Must now wait for write to complete.
+// Poll the Write In Progess bit in the status register (LSB)
+	uint8_t stat;
+	read_status_register(spi,&stat);
+	return (stat & 1);
+}
 
