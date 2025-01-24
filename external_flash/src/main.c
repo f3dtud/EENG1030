@@ -49,7 +49,7 @@ int main()
     //sector_erase(SPI1,0);
     while(1)
     {
-        read_data(SPI1,0,din,10);
+        read_electronic_signature(SPI1,din,10);
         delay(200);
     }
 }
@@ -165,7 +165,12 @@ void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t A
         Port->AFR[1] |= (AF << (4*BitNumber));
     }
 }
-int read_electronic_signature(SPI_TypeDef *spi,uint8_t *sig,uint32_t sig_len);
+int read_electronic_signature(SPI_TypeDef *spi,uint8_t *sig,uint32_t sig_len)
+{
+    uint8_t cmd=0x90;
+	spi_exchange(spi,&cmd,1,sig,sig_len); // should return the values 0x13 and 0xc2 in locations 4 and 5 in sig	
+	return 0;
+}
 int write_enable(SPI_TypeDef *spi)
 {
     uint8_t cmd=0x06;
