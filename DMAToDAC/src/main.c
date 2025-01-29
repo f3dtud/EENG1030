@@ -1,4 +1,4 @@
-// DMA to the DAC triggered by Timer 2 channel 3 (DMA1, Channel 1) CxS[3:0]=0111 
+// DMA to the DAC triggered by Timer 7 
 // DAC output is on PA4
 // 
 
@@ -6,11 +6,12 @@
 #include <stdint.h>
 void setup(void);
 void delay(volatile uint32_t dly);
+void initClocks(void);
 void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
 void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
 void initDAC(void);
 void writeDAC(int value);
-void initTimer2(void);
+void initTimer7(void);
 /*
 Octave/matlab code to generate the sine wave table:
 clear
@@ -27,40 +28,81 @@ end
 fclose(f);
 
 */
-const uint16_t sine_table[]={2047,2097,2147,2198,2248,2298,2347,2397,2446,2496,2545,2593,2641,2689,2737,2784,2831,2877,2922,2968,3012,3056,3100,3142,3185,3226,3267,3307,3346,3384,3422,3459,3495,3530,3564,3597,3630,3661,3692,3721,3749,3777,3803,3829,3853,3876,3898,3919,3939,3957,3975,3991,4006,4020,4033,4045,4055,4064,4072,4079,4085,4089,4092,4094,4095,4094,4092,4089,4085,4079,4072,4064,4055,4045,4033,4020,4006,3991,3975,3957,3939,3919,3898,3876,3853,3829,3803,3777,3749,3721,3692,3661,3630,3597,3564,3530,3495,3459,3422,3384,3346,3307,3267,3226,3185,3142,3100,3056,3012,2968,2922,2877,2831,2784,2737,2689,2641,2593,2545,2496,2446,2397,2347,2298,2248,2198,2147,2097,2047,1997,1947,1896,1846,1796,1747,1697,1648,1598,1549,1501,1453,1405,1357,1310,1263,1217,1172,1126,1082,1038,994,952,909,868,827,787,748,710,672,635,599,564,530,497,464,433,402,373,345,317,291,265,241,218,196,175,155,137,119,103,88,74,61,49,39,30,22,15,9,5,2,0,0,0,2,5,9,15,22,30,39,49,61,74,88,103,119,137,155,175,196,218,241,265,291,317,345,373,402,433,464,497,530,564,599,635,672,710,748,787,827,868,909,952,994,1038,1082,1126,1172,1217,1263,1310,1357,1405,1453,1501,1549,1598,1648,1697,1747,1796,1846,1896,1947,1997};
-
+#pragma pack 2
+const uint16_t sine_table[]={127,130,133,136,139,143,146,149,152,155,158,161,164,167,170,173,176,179,182,184,187,190,193,195,198,200,203,205,208,210,213,215,217,219,221,224,226,228,229,231,233,235,236,238,239,241,242,244,245,246,247,248,249,250,251,251,252,253,253,254,254,254,254,254,255,254,254,254,254,254,253,253,252,251,251,250,249,248,247,246,245,244,242,241,239,238,236,235,233,231,229,228,226,224,221,219,217,215,213,210,208,205,203,200,198,195,193,190,187,184,182,179,176,173,170,167,164,161,158,155,152,149,146,143,139,136,133,130,127,124,121,118,115,111,108,105,102,99,96,93,90,87,84,81,78,75,72,70,67,64,61,59,56,54,51,49,46,44,41,39,37,35,33,30,28,26,25,23,21,19,18,16,15,13,12,10,9,8,7,6,5,4,3,3,2,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,2,3,3,4,5,6,7,8,9,10,12,13,15,16,18,19,21,23,25,26,28,30,33,35,37,39,41,44,46,49,51,54,56,59,61,64,67,70,72,75,78,81,84,87,90,93,96,99,102,105,108,111,115,118,121,124};
 int vin;
 int main()
 {
 
     int i=0;
+    
     setup();
     while(1)
     {        
-        writeDAC(sine_table[i]);
+       // writeDAC(sine_table[i]);
         i++;
-        delay(10);
+        delay(100000);
         if (i > 255)
             i=0;
     }
 }
+void initClocks()
+{
+	// Initialize the clock system to a higher speed.
+	// At boot time, the clock is derived from the MSI clock 
+	// which defaults to 4MHz.  Will set it to 80MHz
+	// See chapter 6 of the reference manual (RM0393)
+	    RCC->CR &= ~(1 << 24); // Make sure PLL is off
+	
+	// PLL Input clock = MSI so BIT1 = 1, BIT 0 = 0
+	// PLLM = Divisor for input clock : set = 1 so BIT6,5,4 = 0
+	// PLL-VCO speed = PLL_N x PLL Input clock
+	// This must be < 344MHz
+	// PLL Input clock = 4MHz from MSI
+	// PLL_N can range from 8 to 86.  
+	// Will use 80 for PLL_N as 80 * 4 = 320MHz
+	// Put value 80 into bits 14:8 (being sure to clear bits as necessary)
+	// PLLSAI3 : Serial audio interface : not using leave BIT16 = 0
+	// PLLP : Must pick a value that divides 320MHz down to <= 80MHz
+	// If BIT17 = 1 then divisor is 17; 320/17 = 18.82MHz : ok (PLLP used by SAI)
+	// PLLQEN : Don't need this so set BIT20 = 0
+	// PLLQ : Must divide 320 down to value <=80MHz.  
+	// Set BIT22,21 to 1 to get a divisor of 8 : ok
+	// PLLREN : This enables the PLLCLK output of the PLL
+	// I think we need this so set to 1. BIT24 = 1 
+	// PLLR : Pick a value that divides 320 down to <= 80MHz
+	// Choose 4 to give an 80MHz output.  
+	// BIT26 = 0; BIT25 = 1
+	// All other bits reserved and zero at reset
+	    RCC->PLLCFGR = (1 << 25) + (1 << 24) + (1 << 22) + (1 << 21) + (1 << 17) + (80 << 8) + (1 << 0);	
+	    RCC->CR |= (1 << 24); // Turn PLL on
+	    while( (RCC->CR & (1 << 25))== 0); // Wait for PLL to be ready
+	// configure flash for 4 wait states (required at 80MHz)
+	    FLASH->ACR &= ~((1 << 2)+ (1 << 1) + (1 << 0));
+	    FLASH->ACR |= (1 << 2); 
+	    RCC->CFGR |= (1 << 1)+(1 << 0); // Select PLL as system clock
+}
 void setup(void)
 {
+    initClocks();
     RCC->AHB2ENR |= (1 << 0) | (1 << 1); // turn on GPIOA and GPIOB
 
     pinMode(GPIOB,3,1); // digital output
     pinMode(GPIOB,4,0); // digital input
     enablePullUp(GPIOB,4); // pull-up for button
     pinMode(GPIOA,0,3);  // analog input
-    initDAC();
-    initTimer2();
+
     RCC->AHB1ENR |= (1 << 0); // enable DMA1
-    DMA1_Channel1->CCR = 0;
-    DMA1_Channel1->CCR |= (1 << 10) + (1 < 8) + (1 << 7) + (1 << 5) + (1 << 4);
-    DMA1_Channel1->CNDTR = 256;
-    DMA1_Channel1->CPAR = &(DAC->DHR12R1);
-    DMA1_Channel1->CMAR = sine_table;
-    DMA1_CSELR->CSELR = 7; 
+    DMA1_Channel3->CCR = 0;
+    DMA1_Channel3->CNDTR = 256;
+    DMA1_Channel3->CPAR = (uint32_t)(&(DAC->DHR12L1));
+    DMA1_Channel3->CMAR = (uint32_t)sine_table;
+    DMA1_CSELR->CSELR = (0b0110 << 8); // DMA Trigger = DAC channel 1.
+    DMA1_Channel3->CCR = 0;
+    DMA1_Channel3->CCR = (1 << 10)  | (1 < 8) | (1 << 7) | (1 << 5) | (1 << 4);    
+    DMA1_Channel3->CCR |= (1 << 0);
+    initTimer7();
+    initDAC();
 }
 
 
@@ -71,8 +113,10 @@ void initDAC()
     GPIOA->MODER |= (1 << 8) | (1 << 9); // Set mode to analogue (DAC) 
     RCC->APB1ENR1 |= (1 << 29);   // Enable the DAC
     RCC->APB1RSTR1 &= ~(1 << 29); // Take DAC out of reset
-    DAC->CR &= ~(1 << 0);         // Enable = 0
+    DAC->CR = 0;         // Enable = 0
+    DAC->CR |= (1 << 12) | (0b010 << 3) | (1 << 2);  // enable DMA and TIM7 trigger
     DAC->CR |= (1 << 0);          // Enable = 1
+    writeDAC(0);
 }
 void writeDAC(int value)
 {
@@ -101,15 +145,17 @@ void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode)
 	mode_value = mode_value | Mode;
 	Port->MODER = mode_value;
 }
-void initTimer2(void)
+void initTimer7(void)
 {
-    RCC->APB1ENR1 |= (1 << 0); // enable Timer 2
-    TIM2->CR1 = 0;
-    TIM2->CCMR2 = (0b110 << 12) + (1 << 11)+(1 << 10);
-    TIM2->CCER |= (1 << 12);
-    TIM2->ARR = 1000-1;
-    TIM2->CCR4 = 500;
-    TIM2->EGR |= (1 << 0);
-    TIM2->CR1 = (1 << 7);
-    TIM2->CR1 |= (1 << 0);  
+    // Timer 2 can be used to trigger the DAC
+    
+    RCC->APB1ENR1 |= (1 << 5); // enable Timer 7
+    TIM7->CR1 = 0;    
+    TIM7->CR2 = (0b010 << 4); // update event is selected as trigger output
+    TIM7->DIER = (1 << 8)+(1 << 0); // update dma request enabled - NECESSARY?
+    TIM7->PSC = 0;
+    TIM7->ARR = 20-1;
+    TIM7->EGR = (1 << 0); // enable update event generation 
+    TIM7->CR1 = (1 << 7);    
+    TIM7->CR1 |= (1 << 0);  
 }
