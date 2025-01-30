@@ -1,6 +1,9 @@
 // DMA to the DAC triggered by Timer 7 
 // DAC output is on PA4
-// 
+// It would appear that 16 bit (half word) transfers to the DAC are not possible 
+// using DMA.  8 bits seem to work ok.  Not clear about 32 bit transfers.
+// Using the DAC in 12 bit mode under software control works fine.  I suspect
+// there is a problem involving the DMA on the AHB bus and the DAC on the APB bus
 
 #include <stm32l432xx.h>
 #include <stdint.h>
@@ -28,7 +31,8 @@ end
 fclose(f);
 
 */
-const uint32_t sine_table[]={127,130,133,136,139,143,146,149,152,155,158,161,164,167,170,173,176,179,182,184,\
+
+const uint8_t sine_table[]={127,130,133,136,139,143,146,149,152,155,158,161,164,167,170,173,176,179,182,184,\
                              187,190,193,195,198,200,203,205,208,210,213,215,217,219,221,224,226,228,229,231,233,\
                              235,236,238,239,241,242,244,245,246,247,248,249,250,251,251,252,253,253,254,254,254,\
                              254,254,255,254,254,254,254,254,253,253,252,251,251,250,249,248,247,246,245,244,242,\
@@ -39,6 +43,8 @@ const uint32_t sine_table[]={127,130,133,136,139,143,146,149,152,155,158,161,164
                              7,6,5,4,3,3,2,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,2,3,3,4,5,6,7,8,9,10,12,13,15,16,18,19,21,\
                              23,25,26,28,30,33,35,37,39,41,44,46,49,51,54,56,59,61,64,67,70,72,75,78,81,84,87,90,93,\
                              96,99,102,105,108,111,115,118,121,124};
+
+
 int vin;
 int main()
 {
@@ -104,14 +110,13 @@ void setup(void)
     RCC->AHB1ENR |= (1 << 0); // enable DMA1
     DMA1_Channel3->CCR = 0;
     DMA1_Channel3->CNDTR = 256;
-    DMA1_Channel3->CPAR = (uint32_t)(&(DAC->DHR12L1));
+    DMA1_Channel3->CPAR = (uint32_t)(&(DAC->DHR8R1));
     DMA1_Channel3->CMAR = (uint32_t)sine_table;
     DMA1_CSELR->CSELR = (0b0110 << 8); // DMA Trigger = DAC channel 1.
     DMA1_Channel3->CCR = 0;
     DMA1_Channel3->CCR = 0;
-    //DMA1_Channel3->CCR = (1 << 10)  | (1 < 8) | (1 << 7) | (1 << 5) | (1 << 4);    
     DMA1_Channel3->CCR =  (1 << 7) | (1 << 5) | (1 << 4);
-    DMA1_Channel3->CCR |= (1 << 11)  | (1 < 9);
+    //DMA1_Channel3->CCR |= (1 << 11)  | (1 < 9);
     DMA1_Channel3->CCR |= (1 << 0);
     initTimer7();
     initDAC();
