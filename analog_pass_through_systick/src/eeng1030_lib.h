@@ -1,4 +1,4 @@
-#include <stdint.h>
+            #include <stdint.h>
 #include <stm32l432xx.h>
 void initClocks();
 void enablePullUp(GPIO_TypeDef *Port, uint32_t BitNumber);
