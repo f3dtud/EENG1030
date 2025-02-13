@@ -7,6 +7,7 @@
 void setup(void);
 void delay(volatile uint32_t dly);
 void initSerial(uint32_t baudrate);
+void eputc(char c);
 int count;
 int main()
 {
@@ -44,9 +45,7 @@ void initSerial(uint32_t baudrate)
 	USART2->CR3 = (1 << 12); // disable over-run errors
 	USART2->BRR = BaudRateDivisor;
 	USART2->CR1 =  (1 << 3);  // enable the transmitter
-    USART2->CR3 = (1 << 12); // disable over-run errors
 	USART2->CR1 |= (1 << 0);
-    USART2->ICR = (1 << 1); // clear any old framing errors
 }
 int _write(int file, char *data, int len)
 {
@@ -57,9 +56,13 @@ int _write(int file, char *data, int len)
     }
     while(len--)
     {
-        while( (USART2->ISR & (1 << 6))==0); // wait for ongoing transmission to finish
-        USART2->TDR=*data;    
+        eputc(*data);    
         data++;
     }    
     return 0;
 }
+void eputc(char c)
+{
+    while( (USART2->ISR & (1 << 6))==0); // wait for ongoing transmission to finish
+    USART2->TDR=c;
+}       

@@ -6,7 +6,7 @@ SAI1_SCK_A  :   PA8, AF 13      Bit clock
 SAI1_FS_A   :   PA9, AF 13      Selects Left/Right channel
 SAI1_SD_A   :   PA10, AF 13 .   This is the audio data pin.
 Using SAI1_A in master mode
-Will attempte 48kHz sampling rate.  BCLK (SAI1_SCK) = 3.072MHz, LRCLK = 48kHz
+Will attempt 48kHz sampling rate.  BCLK (SAI1_SCK) = 3.072MHz, LRCLK = 48kHz
 */
 #include <stm32l432xx.h>
 #include <stdint.h>
@@ -23,12 +23,15 @@ int main()
     initSAI();
     while(1)
     {
-        GPIOB->ODR |= (1 << 3);
-        delay(100);
-        GPIOB->ODR &= ~(1 << 3);
-        delay(100);
+        GPIOB->ODR |= (1 << 3);        
         SAI1_Block_A->CLRFR=0xff; // clear all flags
-        SAI1_Block_A->DR=0x1234;
+        SAI1_Block_A->DR=0x12345678;
+                SAI1_Block_A->DR=0x12345678;
+
+        SAI1_Block_A->DR=0x12345678;
+
+        GPIOB->ODR &= ~(1 << 3);
+
     }
 }
 void initSAI(void)
@@ -38,11 +41,17 @@ void initSAI(void)
     pinMode(GPIOA,10,2);
     selectAlternateFunction(GPIOA,8,13);
     selectAlternateFunction(GPIOA,9,13);
-    selectAlternateFunction(GPIOA,10,13);
+    selectAlternateFunction(GPIOA,10,13);    
+
+    RCC->APB2ENR |= (1 << 21);
+    
+    RCC->PLLSAI1CFGR = (2 << 27)+(127  << 8)+(1 << 16); // set SAI bit clock to 48kHz
     RCC->CR |= (1 << 26); // turn on SAI1 PLL
-    RCC->PLLSAI1CFGR |= (1<<16)+(1<<20);
+    SAI1_Block_A->CR1 = (4 << 5) ; // 16 bit data
+    SAI1_Block_A->SLOTR |= (1 << 8);
     SAI1_Block_A->CR1 |= (1 << 16); // turn on block A of SAI1
     SAI1_Block_A->FRCR = 16; // 16 bit frame length
+    
     SAI1->GCR = (1 << 4);
 
 }
@@ -103,7 +112,6 @@ void initClocks()
 	// PLL_N can range from 8 to 86.  
 	// Will use 80 for PLL_N as 80 * 4 = 320MHz
 	// Put value 80 into bits 14:8 (being sure to clear bits as necessary)
-	// PLLSAI3 : Serial audio interface : not using leave BIT16 = 0
 	// PLLP : Must pick a value that divides 320MHz down to <= 80MHz
 	// If BIT17 = 1 then divisor is 17; 320/17 = 18.82MHz : ok (PLLP used by SAI)
 	// PLLQEN : Don't need this so set BIT20 = 0
@@ -115,7 +123,7 @@ void initClocks()
 	// Choose 4 to give an 80MHz output.  
 	// BIT26 = 0; BIT25 = 1
 	// All other bits reserved and zero at reset
-	    RCC->PLLCFGR = (1 << 25) + (1 << 24) + (1 << 22) + (1 << 21) + (1 << 17) + (80 << 8) + (1 << 0) + (1 << 16)	;
+        RCC->PLLCFGR = (1 << 25) + (1 << 24) + (1 << 22) + (1 << 21) + (1 << 17) + (80 << 8) + (1 << 0);
 	    RCC->CR |= (1 << 24); // Turn PLL on
 	    while( (RCC->CR & (1 << 25))== 0); // Wait for PLL to be ready
 	// configure flash for 4 wait states (required at 80MHz)
