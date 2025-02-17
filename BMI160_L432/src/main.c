@@ -8,10 +8,11 @@ int main()
     while(1)
     {
         GPIOB->ODR |= (1 << 3);
-        delay(100000);        
-        GPIOB->ODR &= ~(1 << 3);
-        delay(100000);
+        delay(10000);                
         I2C1->TXDR=0xaa;
+        GPIOB->ODR &= ~(1 << 3);
+        delay(10000);
+
     }
 }
 void setup()
@@ -23,8 +24,8 @@ void initI2C(void)
 {
     initClocks();
     pinMode(GPIOB,3,1); // make PB3 (internal LED) an output
-    pinMode(GPIOB,6,3); // alternative functions for PB6 and PB7
-    pinMode(GPIOB,7,3); 
+    pinMode(GPIOB,6,2); // alternative functions for PB6 and PB7
+    pinMode(GPIOB,7,2); 
     selectAlternateFunction(GPIOB,6,4); // Alternative function 4 = I2C1_SCL
     selectAlternateFunction(GPIOB,7,4); // Alternative function 4 = I2C1_SDA
     RCC->APB1ENR1 |= (1 << 21); // enable I2C1
