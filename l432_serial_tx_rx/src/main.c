@@ -14,19 +14,22 @@ void delay(volatile uint32_t dly);
 void initSerial(uint32_t baudrate);
 int count;
 circular_buffer rx_buf;
-
+volatile uint32_t data_ready=0;
 int main()
 {
+    char c;
     setup();
     init_circ_buf(&rx_buf);
     NVIC->ISER[1] |= (1 << (38-32));
-    EXTI->IMR1 |= (1 << 27);
-    EXTI->EMR1 |= (1 << 27);
+    
     enable_interrupts();
     while(1)
     {
-        printf("test %d\r\n",rx_buf.count);
-        delay(500000);
+        if (data_ready)
+        {
+            printf("you got a packet\r\n");
+            data_ready=0;
+        }
     }
 }
 void delay(volatile uint32_t dly)
@@ -87,6 +90,15 @@ void USART2_IRQHandler()
     if ((USART2->ISR &(1<<5)) )
     {
         c = USART2->RDR;
-        put_circ_buf(&rx_buf,c);
+        if (c==']')
+        {
+            data_ready = 1;
+        }
+        else if(c=='[')
+        {
+            init_circ_buf(&rx_buf);
+        }
+        else
+            put_circ_buf(&rx_buf,c);
     }
 }
