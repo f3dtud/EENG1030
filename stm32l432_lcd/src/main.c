@@ -2,9 +2,9 @@
 // Also makes use of the systick timer to provide calibrated delays
 #include <eeng1030_lib.h>
 #include <stdio.h>
-#include  <errno.h>
-#include  <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
-volatile uint32_t milliseconds;
+#include <errno.h>
+#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
+#include "display.h"
 void setup(void);
 void delay_ms(volatile uint32_t dly);
 void initSerial(uint32_t baudrate);
@@ -13,18 +13,17 @@ int count;
 int main()
 {
     setup();
+    init_display();
+    drawRectangle(0,0,159,79,RGBToWord(255,0,0));
+    printText("Hola Mundo!",5, 10, RGBToWord(255,255,0),0);
+    printText("Hello World",5, 20, RGBToWord(128,128,255),0);
     while(1)
     {
         printf("test %d\r\n",count++);
         delay_ms(1000);
     }
 }
-void delay_ms(volatile uint32_t dly)
-{
-    uint32_t end_time=dly+milliseconds;
-    while(milliseconds != end_time)
-        asm(" wfi "); // sleep while waiting
-}
+
 void setup()
 {
     initClocks();    
@@ -73,7 +72,3 @@ void eputc(char c)
     while( (USART2->ISR & (1 << 6))==0); // wait for ongoing transmission to finish
     USART2->TDR=c;
 }       
-void SysTick_Handler(void)
-{    
-    milliseconds++;
-}

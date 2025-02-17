@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stm32l432xx.h>
+volatile uint32_t milliseconds;
+
 void initClocks()
 {
 	// Initialize the clock system to a higher speed.
@@ -71,75 +73,14 @@ void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t A
         Port->AFR[1] |= (AF << (4*BitNumber));
     }
 }
-void initSPI(SPI_TypeDef *spi)
-{
-	/*	I/O List
-		PA7  : SPI1 MOSI : Alternative function 5
-		PB0  : SPI1 SSEL : Alternative function 5
-		PA11 : SPI1 MISO : Alternative function 5
-		PA1  : SPI1 SCLK : Alternative function 5    
-*/
-	int drain;	
-	// Now configure the SPI interface
-	drain = spi->SR;				// dummy read of SR to clear MODF	
-	// enable SSM, set SSI, enable SPI, PCLK/2, MSB First Master, Clock = 1 when idle, CPOL=1 (SPI mode 3 overall)   
-	spi->CR1 = (1 << 8)+(1 << 2) +(1 << 1) + (1 << 0) + (1<<3); // Assuming 4MHz default system clock set SPI speed to 1MHz (quite slow)
-	spi->CR2 = (1 << 10)+(1 << 9)+(1 << 8)+(1 << 2); 	// configure for 8 bit operation
 
-	pinMode(GPIOA,7,2);
-    pinMode(GPIOB,0,2);
-    pinMode(GPIOA,11,2);
-    pinMode(GPIOA,1,2);
-    selectAlternateFunction(GPIOA,7,5);
-    selectAlternateFunction(GPIOB,0,5);
-    selectAlternateFunction(GPIOA,11,5);
-    selectAlternateFunction(GPIOA,1,5);
-}
-
-uint8_t spi_exchange(SPI_TypeDef *spi,uint8_t d_out[], uint32_t d_out_len, uint8_t d_in[], uint32_t d_in_len)
-{   
-    unsigned Timeout = 1000000;
-    unsigned index=0;
-    uint8_t ReturnValue=0;    
-    uint8_t *preg=(uint8_t*)&spi->DR; // this is done to force 8 bit transfers and to suppress some warnings.
-	beginSPITransaction(spi);
-    while (((spi->SR & (1 << 7))!=0)&&(Timeout--)); // wait for any old transactions that may be pending to finish.
-    while(d_out_len--) {
-        *preg = d_out[index]; 
-        index++;
-        Timeout = 1000000;
-        while (((spi->SR & (1 << 7))!=0)&&(Timeout--))
-        {
-            // wait for transfer to complete
-        }        
-        if (Timeout==0)
-        {
-            ReturnValue = -1;
-        }
-    }
-    index=0;
-    while(d_in_len--)
-    {
-        *preg=0xff;
-        Timeout = 1000000;
-        while (((spi->SR & (1 << 7))!=0)&&(Timeout--))
-        {
-            // wait for transfer to complete
-        }
-        if (Timeout==0)
-        {
-            ReturnValue = -1;
-        }        
-        d_in[index]=*preg;
-    }
-    endSPITransaction(spi);
-    return ReturnValue;
-}
-void beginSPITransaction(SPI_TypeDef *spi)
+void delay_ms(volatile uint32_t dly)
 {
-    spi->CR1 |= (1 << 6);
+    uint32_t end_time=dly+milliseconds;
+    while(milliseconds != end_time)
+        asm(" wfi "); // sleep while waiting
 }
-void endSPITransaction(SPI_TypeDef *spi)
-{
-	spi->CR1 &= ~(1 << 6);
+void SysTick_Handler(void)
+{    
+    milliseconds++;
 }
