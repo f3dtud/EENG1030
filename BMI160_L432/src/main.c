@@ -21,8 +21,9 @@ uint8_t I2CRead();
 // trial and error running the chip at 72MHz
 // There is a little bit of 'headroom' included
 #define I2C_TIMEOUT 20000
-volatile uint16_t response;
-volatile int16_t x_accel;
+uint16_t response;
+int16_t x_accel;
+int32_t X_g;
 int main()
 {
     char data[]={0x12,0x34,0x56};
@@ -47,9 +48,10 @@ int main()
 		x_accel=x_accel+(response << 8); // combine bytes
 		I2CStop();	// end I2C transaction
 		GPIOB->ODR &= ~(1 << 3); // clear port bit for logic analyser debug
-		printf("Resp=%d\r\n",x_accel);
+		X_g = x_accel;	// promote to 32 bits and preserve sign
+		X_g=(X_g*981)/16384; // assuming +1g ->16384 (+/-2g range)
+		printf("X_g*100=%d\r\n",X_g);
         delay(100000);
-
     }
 }
 void setup()
