@@ -166,35 +166,24 @@ void initSPI(SPI_TypeDef *spi)
 	// enable SSM, set SSI, enable SPI, PCLK/2, MSB First Master, Clock = 1 when idle, CPOL=1 (SPI mode 3 overall)   
 	spi->CR1 = (1 << 9)+(1 << 8)+(1 << 6)+(1 << 2) +(1 << 1) + (1 << 0)+(1 << 3); // Assuming 80MHz default system clock set SPI speed to 20MHz 
 	spi->CR2 = (1 << 10)+(1 << 9)+(1 << 8); 	// configure for 8 bit operation
-
-	
-     
-  for (int drain_count = 0; drain_count < 32; drain_count++)
-    drain = transferSPI8(SPI1,(uint8_t)0x00);
 }
 uint8_t transferSPI8(SPI_TypeDef *spi,uint8_t data)
 {
-    unsigned Timeout = 1000000;
     uint8_t ReturnValue;
-    volatile uint8_t *preg=(volatile uint8_t*)&spi->DR;	
-    while (((spi->SR & (1 << 7))!=0)&&(Timeout--));
+    volatile uint8_t *preg=(volatile uint8_t*)&spi->DR;	 // make sure no transfer is already under way
+    while (((spi->SR & (1 << 7))!=0));
     *preg = data;
-    Timeout = 1000000;
-    while (((spi->SR & (1 << 7))!=0)&&(Timeout--));        
-	ReturnValue = *preg;	
+    while (((spi->SR & (1 << 7))!=0));// wait for transfer to finish
+    ReturnValue = *preg;	
     return ReturnValue;
 }
 uint16_t transferSPI16(SPI_TypeDef *spi,uint16_t data)
 {
-    unsigned Timeout = 1000000;
-    uint32_t ReturnValue;    
-	
-    while (((spi->SR & (1 << 7))!=0)&&(Timeout--));
-    spi->DR = data;
-    Timeout = 1000000;
-    while (((spi->SR & (1 << 7))!=0)&&(Timeout--));        
-	ReturnValue = SPI1->DR;
-	
+    uint32_t ReturnValue;    	
+    while (((spi->SR & (1 << 7))!=0));// make sure no transfer is already under way
+    spi->DR = data;    
+    while (((spi->SR & (1 << 7))!=0));    // wait for transfer to finish
+	ReturnValue = spi->DR;	
     return (uint16_t)ReturnValue;
 }
 static void command(uint8_t cmd)
