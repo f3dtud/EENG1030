@@ -1,0 +1,95 @@
+// This example uses demonstrates interfacing an SPI display with the STM32L432
+// Also makes use of the systick timer to provide calibrated delays
+#include <eeng1030_lib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
+#include "display.h"
+#include "MX25L8005.h"
+void setup(void);
+void delay_ms(volatile uint32_t dly);
+void initSerial(uint32_t baudrate);
+void eputc(char c);
+int count;
+int main()
+{
+    uint8_t din[10];
+    setup();
+    init_display();
+    init_mx25l8005();
+    
+    drawRectangle(0,0,159,79,RGBToWord(255,0,0));
+    printText("Hola Mundo!",5, 10, RGBToWord(255,255,0),0);
+    printText("Hello World",5, 20, RGBToWord(128,128,255),0);
+    displayDisable(); // disconnect the display    
+    enable_mx25();
+    power_up(SPI1);
+    write_enable(SPI1);    
+    while(1)
+    {        
+        enable_mx25();
+        delay_ms(1);
+        read_data(SPI1,0, din,10);
+        delay_ms(1);
+        disable_mx25();
+        for (int i=0;i<10;i++)
+        {
+            printf(" %x",din[i]);
+        }
+        printf("\r\n");
+        displayEnable();
+        printNumber(count++,10,60,RGBToWord(64,255,64),0);
+        displayDisable();
+        delay_ms(1000);
+    }
+}
+
+void setup()
+{
+    initClocks();    
+    SysTick->LOAD = 80000-1; // Systick clock = 80MHz. 80000000/80000=1000
+	SysTick->CTRL = 7; // enable systick counter and its interrupts
+	SysTick->VAL = 10; // start from a low number so we don't wait for ages for first interrupt
+	__asm(" cpsie i "); // enable interrupts globally
+    RCC->AHB2ENR |= (1 << 0) + (1 << 1); // enable GPIOA and GPIOB
+    
+    initSerial(9600);
+}
+void initSerial(uint32_t baudrate)
+{
+    RCC->AHB2ENR |= (1 << 0); // make sure GPIOA is turned on
+    pinMode(GPIOA,2,2); // alternate function mode for PA2
+    selectAlternateFunction(GPIOA,2,7); // AF7 = USART2 TX
+
+    RCC->APB1ENR1 |= (1 << 17); // turn on USART2
+
+	const uint32_t CLOCK_SPEED=80000000;    
+	uint32_t BaudRateDivisor;
+	
+	BaudRateDivisor = CLOCK_SPEED/baudrate;	
+	USART2->CR1 = 0;
+	USART2->CR2 = 0;
+	USART2->CR3 = (1 << 12); // disable over-run errors
+	USART2->BRR = BaudRateDivisor;
+	USART2->CR1 =  (1 << 3);  // enable the transmitter
+	USART2->CR1 |= (1 << 0);
+}
+int _write(int file, char *data, int len)
+{
+    if ((file != STDOUT_FILENO) && (file != STDERR_FILENO))
+    {
+        errno = EBADF;
+        return -1;
+    }
+    while(len--)
+    {
+        eputc(*data);    
+        data++;
+    }    
+    return 0;
+}
+void eputc(char c)
+{
+    while( (USART2->ISR & (1 << 6))==0); // wait for ongoing transmission to finish
+    USART2->TDR=c;
+}       
