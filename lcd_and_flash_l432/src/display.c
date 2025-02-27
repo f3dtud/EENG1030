@@ -501,7 +501,7 @@ uint16_t RGBToWord(uint16_t R, uint16_t G, uint16_t B)
 {
 	uint16_t rvalue = 0;
     rvalue += G >> 5;
-    rvalue += (G & (7)) << 13;
+    rvalue += (G & (0x1c)) << 11;
     rvalue += (R >> 3) << 8;
     rvalue += (B >> 3) << 3;
     return rvalue;

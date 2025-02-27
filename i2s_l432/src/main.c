@@ -24,13 +24,12 @@ int main()
     while(1)
     {
         GPIOB->ODR |= (1 << 3);        
-        SAI1_Block_A->CLRFR=0xff; // clear all flags
+        //SAI1_Block_A->CLRFR=0xff; // clear all flags
         SAI1_Block_A->DR=0x12345678;
-                SAI1_Block_A->DR=0x12345678;
-
-        SAI1_Block_A->DR=0x12345678;
-
+        //SAI1_Block_A->DR=0x12345678;
+        //SAI1_Block_A->DR=0x12345678;
         GPIOB->ODR &= ~(1 << 3);
+        delay(100);
 
     }
 }
@@ -48,10 +47,11 @@ void initSAI(void)
     RCC->PLLSAI1CFGR = (2 << 27)+(127  << 8)+(1 << 16); // set SAI bit clock to 48kHz
     RCC->CR |= (1 << 26); // turn on SAI1 PLL
     SAI1_Block_A->CR1 = (4 << 5) ; // 16 bit data
-    SAI1_Block_A->SLOTR |= (1 << 8);
+    SAI1_Block_A->SLOTR |= (1 << 8) + (1 << 16)+(1 << 17);
+    SAI1_Block_A->FRCR = 16-1; // 16 bit frame length
+    //SAI1_Block_A->FRCR |= (1 << 16);
     SAI1_Block_A->CR1 |= (1 << 16); // turn on block A of SAI1
-    SAI1_Block_A->FRCR = 16; // 16 bit frame length
-    
+
     SAI1->GCR = (1 << 4);
 
 }

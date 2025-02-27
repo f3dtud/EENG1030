@@ -3,6 +3,7 @@
 #include <stm32l432xx.h>
 #include "eeng1030_lib.h"
 #include "font5x7.h"
+#include "spi.h"
 #define SCREEN_HEIGHT 80
 #define SCREEN_WIDTH 160
 /*	I/O List
@@ -20,9 +21,6 @@ static void ResetHigh(void);
 static void ResetLow(void);
 static void command(uint8_t cmd);
 static void data(uint8_t data);
-static uint16_t transferSPI16(SPI_TypeDef *spi, uint16_t data);
-static uint8_t transferSPI8(SPI_TypeDef *spi, uint8_t data);
-void initSPI(SPI_TypeDef *spi);
 void clear(void);
 static uint32_t mystrlen(const char *s);
 static void drawLineLowSlope(uint16_t x0, uint16_t y0, uint16_t x1,uint16_t y1, uint16_t Colour);
@@ -149,43 +147,7 @@ static void ResetLow(void)
 {
     GPIOA->ODR &= ~(1 << 6);
 }
-void initSPI(SPI_TypeDef *spi)
-{
-	/*	I/O List
-		PA7  : SPI1 MOSI : Alternative function 5		
-		PA1  : SPI1 SCLK : Alternative function 5    
-*/
-	int drain;	
-    RCC->APB2ENR |= (1 << 12); // turn on SPI1
-	// Now configure the SPI interface        
-    pinMode(GPIOA,7,2);        
-    pinMode(GPIOA,1,2);
-    selectAlternateFunction(GPIOA,7,5);        
-    selectAlternateFunction(GPIOA,1,5);
-	drain = spi->SR;				// dummy read of SR to clear MODF	
-	// enable SSM, set SSI, enable SPI, PCLK/2, MSB First Master, Clock = 1 when idle, CPOL=1 (SPI mode 3 overall)   
-	spi->CR1 = (1 << 9)+(1 << 8)+(1 << 6)+(1 << 2) +(1 << 1) + (1 << 0)+(1 << 3); // Assuming 80MHz default system clock set SPI speed to 20MHz 
-	spi->CR2 = (1 << 10)+(1 << 9)+(1 << 8); 	// configure for 8 bit operation
-}
-uint8_t transferSPI8(SPI_TypeDef *spi,uint8_t data)
-{
-    uint8_t ReturnValue;
-    volatile uint8_t *preg=(volatile uint8_t*)&spi->DR;	 // make sure no transfer is already under way
-    while (((spi->SR & (1 << 7))!=0));
-    *preg = data;
-    while (((spi->SR & (1 << 7))!=0));// wait for transfer to finish
-    ReturnValue = *preg;	
-    return ReturnValue;
-}
-uint16_t transferSPI16(SPI_TypeDef *spi,uint16_t data)
-{
-    uint32_t ReturnValue;    	
-    while (((spi->SR & (1 << 7))!=0));// make sure no transfer is already under way
-    spi->DR = data;    
-    while (((spi->SR & (1 << 7))!=0));    // wait for transfer to finish
-	ReturnValue = spi->DR;	
-    return (uint16_t)ReturnValue;
-}
+
 static void command(uint8_t cmd)
 {
     DCLow();
@@ -534,15 +496,23 @@ void printNumberX2(uint16_t Number, uint16_t x, uint16_t y, uint16_t ForeColour,
     Buffer[0] = Number % 10 + '0';
     printTextX2(Buffer, x, y, ForeColour, BackColour);	
 }
+uint16_t swap_bytes(uint16_t val)
+{
+    uint16_t b1,b2;
+    b1 = val & 0xff;
+    b2 = val >> 8;
+    return (b1 << 8)+b2;
+}
 uint16_t RGBToWord(uint16_t R, uint16_t G, uint16_t B)
 {
 	uint16_t rvalue = 0;
     rvalue += G >> 5;
-    rvalue += (G & (7)) << 13;
+    rvalue += (G & (0x1c)) << 11;
     rvalue += (R >> 3) << 8;
     rvalue += (B >> 3) << 3;
     return rvalue;
 }
+
 void drawLineLowSlope(uint16_t x0, uint16_t y0, uint16_t x1,uint16_t y1, uint16_t Colour)
 {
    // Reference : https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm    

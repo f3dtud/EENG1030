@@ -17,6 +17,9 @@ int main()
     drawRectangle(0,0,159,79,RGBToWord(255,0,0));
     printText("Hola Mundo!",5, 10, RGBToWord(255,255,0),0);
     printText("Hello World",5, 20, RGBToWord(128,128,255),0);
+    printText("Hola Mundo!",5, 30, RGBToWord(0,255,0),0);
+
+
     while(1)
     {
         printf("test %d\r\n",count++);
