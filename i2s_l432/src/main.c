@@ -24,12 +24,12 @@ int main()
     while(1)
     {
         GPIOB->ODR |= (1 << 3);        
+       // delay(20);
         //SAI1_Block_A->CLRFR=0xff; // clear all flags
-        SAI1_Block_A->DR=0x12345678;
-        //SAI1_Block_A->DR=0x12345678;
-        //SAI1_Block_A->DR=0x12345678;
+        SAI1_Block_A->DR=0xefffa0a8;
+        //SAI1_Block_A->DR=0xa0a8;     
         GPIOB->ODR &= ~(1 << 3);
-        delay(100);
+        delay(10000);
 
     }
 }
@@ -44,12 +44,15 @@ void initSAI(void)
 
     RCC->APB2ENR |= (1 << 21);
     
-    RCC->PLLSAI1CFGR = (2 << 27)+(127  << 8)+(1 << 16); // set SAI bit clock to 48kHz
+    RCC->PLLSAI1CFGR = (2 << 27)+(32  << 8)+(1 << 16); // set SAI bit clock to 48kHz
     RCC->CR |= (1 << 26); // turn on SAI1 PLL
-    SAI1_Block_A->CR1 = (4 << 5) ; // 16 bit data
-    SAI1_Block_A->SLOTR |= (1 << 8) + (1 << 16)+(1 << 17);
-    SAI1_Block_A->FRCR = 16-1; // 16 bit frame length
-    //SAI1_Block_A->FRCR |= (1 << 16);
+    SAI1->GCR = (1 << 4);  // block A sync out
+    SAI1_Block_A->CR2 = 0;
+    SAI1_Block_A->CR1 = (7 << 5) + (3 << 20) + (1 << 9); // 16 bit data + add in a divider for debugging purposes.
+    SAI1_Block_A->SLOTR |= (1 << 8) + (1 << 16)+(1 << 17)+(1 << 7);    
+    // 32 bit frame length.  FS selected BEFORE MSB of slot 0.  15+1 clock cycles in FS signal (L/R)
+    SAI1_Block_A->FRCR = (1 << 18) + (1 << 16)+(15<<8)+ 32-1; 
+   // SAI1_Block_A->FRCR |= (1 << 16);
     SAI1_Block_A->CR1 |= (1 << 16); // turn on block A of SAI1
 
     SAI1->GCR = (1 << 4);
