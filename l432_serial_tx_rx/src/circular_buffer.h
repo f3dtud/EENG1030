@@ -5,6 +5,8 @@ typedef struct {
 	uint32_t head;
 	uint32_t tail;
 	uint32_t count;
+	uint32_t lock;
+
 } circular_buffer;
 
 
