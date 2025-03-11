@@ -21,6 +21,7 @@ static void ResetHigh(void);
 static void ResetLow(void);
 static void command(uint8_t cmd);
 static void data(uint8_t data);
+
 void clear(void);
 static uint32_t mystrlen(const char *s);
 static void drawLineLowSlope(uint16_t x0, uint16_t y0, uint16_t x1,uint16_t y1, uint16_t Colour);
@@ -496,13 +497,6 @@ void printNumberX2(uint16_t Number, uint16_t x, uint16_t y, uint16_t ForeColour,
     Buffer[0] = Number % 10 + '0';
     printTextX2(Buffer, x, y, ForeColour, BackColour);	
 }
-uint16_t swap_bytes(uint16_t val)
-{
-    uint16_t b1,b2;
-    b1 = val & 0xff;
-    b2 = val >> 8;
-    return (b1 << 8)+b2;
-}
 uint16_t RGBToWord(uint16_t R, uint16_t G, uint16_t B)
 {
 	uint16_t rvalue = 0;
@@ -512,7 +506,6 @@ uint16_t RGBToWord(uint16_t R, uint16_t G, uint16_t B)
     rvalue += (B >> 3) << 3;
     return rvalue;
 }
-
 void drawLineLowSlope(uint16_t x0, uint16_t y0, uint16_t x1,uint16_t y1, uint16_t Colour)
 {
    // Reference : https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm    
@@ -578,4 +571,13 @@ uint32_t mystrlen(const char *s)
 		len++;
 	}
 	return len;
+}
+
+void displayEnable(void)
+{
+    CSLow();
+}
+void displayDisable(void)
+{
+    CSHigh();
 }

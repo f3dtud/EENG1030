@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 #include "display.h"
+#include "MX25L8005.h"
 void setup(void);
 void delay_ms(volatile uint32_t dly);
 void initSerial(uint32_t baudrate);
@@ -12,17 +13,33 @@ void eputc(char c);
 int count;
 int main()
 {
+    uint8_t din[10];
     setup();
     init_display();
+    init_mx25l8005();
+    
     drawRectangle(0,0,159,79,RGBToWord(255,0,0));
     printText("Hola Mundo!",5, 10, RGBToWord(255,255,0),0);
     printText("Hello World",5, 20, RGBToWord(128,128,255),0);
-    printText("Hola Mundo!",5, 30, RGBToWord(0,255,0),0);
-
-
+    displayDisable(); // disconnect the display    
+    enable_mx25();
+    power_up(SPI1);
+    write_enable(SPI1);    
     while(1)
-    {
-        printf("test %d\r\n",count++);
+    {        
+        enable_mx25();
+        delay_ms(1);
+        read_data(SPI1,0, din,10);
+        delay_ms(1);
+        disable_mx25();
+        for (int i=0;i<10;i++)
+        {
+            printf(" %x",din[i]);
+        }
+        printf("\r\n");
+        displayEnable();
+        printNumber(count++,10,60,RGBToWord(64,255,64),0);
+        displayDisable();
         delay_ms(1000);
     }
 }
@@ -35,6 +52,7 @@ void setup()
 	SysTick->VAL = 10; // start from a low number so we don't wait for ages for first interrupt
 	__asm(" cpsie i "); // enable interrupts globally
     RCC->AHB2ENR |= (1 << 0) + (1 << 1); // enable GPIOA and GPIOB
+    
     initSerial(9600);
 }
 void initSerial(uint32_t baudrate)

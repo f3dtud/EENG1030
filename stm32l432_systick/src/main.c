@@ -32,7 +32,10 @@ void setup()
     pinMode(GPIOB,3,1); // make PB3 an output.
     
 }
+volatile double sample=1.0;
 void SysTick_Handler(void)
 {    
-    GPIOB->ODR ^= (1 << 3);
+    GPIOB->ODR |= (1 << 3);
+    sample = sample * 2.0;
+    GPIOB->ODR &= ~(1 << 3);
 }

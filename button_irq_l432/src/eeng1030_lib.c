@@ -1,7 +1,5 @@
-#include <stdint.h>
 #include <stm32l432xx.h>
-volatile uint32_t milliseconds;
-
+#include <stdint.h>
 void initClocks()
 {
 	// Initialize the clock system to a higher speed.
@@ -72,15 +70,4 @@ void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t A
         Port->AFR[1] &= ~(0x0f << (4*BitNumber));
         Port->AFR[1] |= (AF << (4*BitNumber));
     }
-}
-
-void delay_ms(volatile uint32_t dly)
-{
-    uint32_t end_time=dly+milliseconds;
-    while(milliseconds != end_time)
-        asm(" wfi "); // sleep while waiting
-}
-void SysTick_Handler(void)
-{    
-    milliseconds++;
 }

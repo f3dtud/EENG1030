@@ -14,12 +14,15 @@ void delay(volatile uint32_t dly);
 void initSerial(uint32_t baudrate);
 int count;
 circular_buffer rx_buf;
-
+volatile uint32_t data_ready=0;
 int main()
 {
+    char c;
     setup();
     init_circ_buf(&rx_buf);
     NVIC->ISER[1] |= (1 << (38-32));
+    EXTI->IMR1 |= (1 << 27);
+    EXTI->EMR1 |= (1 << 27);
     enable_interrupts();
     uint32_t *bit_pointer;
     uint32_t bit_address;
@@ -30,16 +33,8 @@ int main()
     bit_pointer = (uint32_t *)bit_address;
     while(1)
     {
-        printf("test %u ",rx_buf.lock);
-        // lock the buffer
-        *bit_pointer = 1;
-        printf("test %u\ ",rx_buf.lock);
-        // unlock the buffer
-        *bit_pointer = 0;
-        printf("test %u\r\n",rx_buf.lock);
-        // check buffer is unlocked
-        delay(500000);        
-
+        printf("test %d\r\n",rx_buf.count);
+        delay(500000);
     }
 }
 void delay(volatile uint32_t dly)
@@ -100,6 +95,15 @@ void USART2_IRQHandler()
     if ((USART2->ISR &(1<<5)) )
     {
         c = USART2->RDR;
-        put_circ_buf(&rx_buf,c);
+        if (c==']')
+        {
+            data_ready = 1;
+        }
+        else if(c=='[')
+        {
+            init_circ_buf(&rx_buf);
+        }
+        else
+            put_circ_buf(&rx_buf,c);
     }
 }
