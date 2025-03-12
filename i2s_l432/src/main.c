@@ -54,16 +54,16 @@ void initSAI(void)
     selectAlternateFunction(GPIOA,10,13);    
 
     RCC->APB2ENR |= (1 << 21);
-    
-    RCC->PLLSAI1CFGR = (2 << 27)+(62  << 8)+(1 << 16); // set SAI bit clock to 48kHz
+    // SAI1 has an independent PLL.  Its input clock speed is 4MHz after initClocks is called (MSI clock)
+    // This is multiplied up by 62 and divided by 2 to give 124MHz.
+
+    RCC->PLLSAI1CFGR = (2 << 27)+(37  << 8)+(1 << 16); // set SAI1 PLL output 74MHz - can this be true - meant to be less than 80MHz
     RCC->CR |= (1 << 26); // turn on SAI1 PLL
-    SAI1->GCR = (1 << 4);  // block A sync out
     SAI1_Block_A->CR2 = 0;
-    SAI1_Block_A->CR1 = (7 << 5) + (5 << 20) + (1 << 9); // 16 bit data + add in a divider 
+    SAI1_Block_A->CR1 = (7 << 5) + (3 << 20) + (1 << 9); // 32 bit frame  + add in a divider to get 47.9kHz sampling rate + set clock edge
     SAI1_Block_A->SLOTR |= (1 << 8) + (1 << 16)+(1 << 17)+(1 << 7);    
     // 32 bit frame length.  FS selected BEFORE MSB of slot 0.  15+1 clock cycles in FS signal (L/R)
     SAI1_Block_A->FRCR = (1 << 18) + (1 << 16)+(15<<8)+ 32-1; 
-   // SAI1_Block_A->FRCR |= (1 << 16);
     SAI1_Block_A->CR1 |= (1 << 17); // enable DMA mode
     SAI1_Block_A->CR1 |= (1 << 16); // turn on block A of SAI1
 
@@ -128,7 +128,7 @@ void initClocks()
 	// Will use 80 for PLL_N as 80 * 4 = 320MHz
 	// Put value 80 into bits 14:8 (being sure to clear bits as necessary)
 	// PLLP : Must pick a value that divides 320MHz down to <= 80MHz
-	// If BIT17 = 1 then divisor is 17; 320/17 = 18.82MHz : ok (PLLP used by SAI)
+	// If BIT17 = 1 then divisor is 17; 320/17 = 18.82MHz : ok (PLLP used by SAI2)
 	// PLLQEN : Don't need this so set BIT20 = 0
 	// PLLQ : Must divide 320 down to value <=80MHz.  
 	// Set BIT22,21 to 1 to get a divisor of 8 : ok
