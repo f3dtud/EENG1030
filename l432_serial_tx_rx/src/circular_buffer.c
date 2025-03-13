@@ -5,7 +5,6 @@ void init_circ_buf(circular_buffer *buf)
 {
 	buf->head=0;
 	buf->tail=0;
-	buf->count=0;
 }
 int put_circ_buf(circular_buffer *buf,char c)
 {

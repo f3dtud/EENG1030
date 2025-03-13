@@ -21,15 +21,20 @@ int main()
     setup();
     init_circ_buf(&rx_buf);
     NVIC->ISER[1] |= (1 << (38-32));
-    
+    EXTI->IMR1 |= (1 << 27);
+    EXTI->EMR1 |= (1 << 27);
     enable_interrupts();
+    uint32_t *bit_pointer;
+    uint32_t bit_address;
+    bit_address = &rx_buf.lock;
+    bit_address = bit_address - 0x20000000;
+    bit_address = bit_address * 32;
+    bit_address = bit_address + 0x22000000+4*2;
+    bit_pointer = (uint32_t *)bit_address;
     while(1)
     {
-        if (data_ready)
-        {
-            printf("you got a packet\r\n");
-            data_ready=0;
-        }
+        printf("test %d\r\n",rx_buf.count);
+        delay(500000);
     }
 }
 void delay(volatile uint32_t dly)
