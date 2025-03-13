@@ -47,18 +47,12 @@ const uint8_t sine_table[]={127,130,133,136,139,143,146,149,152,155,158,161,164,
 
 int vin;
 int main()
-{
-
-    int i=0;
-    
+{    
     setup();
     while(1)
     {        
-       // writeDAC(sine_table[i]);
-        i++;
         delay(100000);
-        if (i > 255)
-            i=0;
+        asm(" wfi ");
     }
 }
 void initClocks()
@@ -112,11 +106,8 @@ void setup(void)
     DMA1_Channel3->CNDTR = 256;
     DMA1_Channel3->CPAR = (uint32_t)(&(DAC->DHR8R1));
     DMA1_Channel3->CMAR = (uint32_t)sine_table;
-    DMA1_CSELR->CSELR = (0b0110 << 8); // DMA Trigger = DAC channel 1.
-    DMA1_Channel3->CCR = 0;
-    DMA1_Channel3->CCR = 0;
-    DMA1_Channel3->CCR =  (1 << 7) | (1 << 5) | (1 << 4);
-    //DMA1_Channel3->CCR |= (1 << 11)  | (1 < 9);
+    DMA1_CSELR->CSELR = (0b0110 << 8); // DMA Trigger = DAC channel 1.    
+    DMA1_Channel3->CCR =  (1 << 7) | (1 << 5) | (1 << 4);   
     DMA1_Channel3->CCR |= (1 << 0);
     initTimer7();
     initDAC();
@@ -176,3 +167,4 @@ void initTimer7(void)
     TIM7->CR1 = (1 << 7);    
     TIM7->CR1 |= (1 << 0);  
 }
+
