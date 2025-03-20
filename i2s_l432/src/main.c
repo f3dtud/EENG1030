@@ -60,6 +60,9 @@ void initSAI(void)
     RCC->PLLSAI1CFGR = (2 << 27)+(37  << 8)+(1 << 16); // set SAI1 PLL output 74MHz - can this be true - meant to be less than 80MHz
     RCC->CR |= (1 << 26); // turn on SAI1 PLL
     SAI1_Block_A->CR2 = 0;
+    // Clock speed calculation seems to go like this:
+    // 74MHz / (2*3) = 12.333333MHz  (bits 20 and 21 in CR1)
+    // This is then divided by 256 and multiplied by the frame length to give 1.542MHz
     SAI1_Block_A->CR1 = (7 << 5) + (3 << 20) + (1 << 9); // 32 bit frame  + add in a divider to get 47.9kHz sampling rate + set clock edge
     SAI1_Block_A->SLOTR |= (1 << 8) + (1 << 16)+(1 << 17)+(1 << 7);    
     // 32 bit frame length.  FS selected BEFORE MSB of slot 0.  15+1 clock cycles in FS signal (L/R)
