@@ -47,7 +47,7 @@ void initADC()
     ADC1->CR |= (1<< 31);
     while(ADC1->CR & (1 << 31)); // wait for calibration to finish.
     ADC1->CFGR = (1 << 31); // disable injection
-    ADC1_COMMON->CCR |= (0x0f << 18);
+    ADC1_COMMON->CCR |= (0x01 << 18); // divide ADC clock by 2 (can delete if more speed is needed)
 }
 int readADC(int chan)
 {
