@@ -16,6 +16,8 @@ void pinMode(GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t Mode);
 void selectAlternateFunction (GPIO_TypeDef *Port, uint32_t BitNumber, uint32_t AF);
 void eputc(char c);
 void initPWM(void);
+void initADC(void);
+int readADC(void);
 
 
 void delay(volatile uint32_t dly)
@@ -24,11 +26,17 @@ void delay(volatile uint32_t dly)
 }
 int main()
 {
+    int adc;
     setup();
+    
     while(1)
     {
-        printf("hello world\r\n");
+        adc=readADC();
+        printf("%d\r\n",adc);
         delay(100000);
+        TIM1->CCR1=(adc*TIM1->ARR)/4095;
+        TIM1->CCR2=(adc*TIM1->ARR)/4095;
+        TIM1->CCR3=(adc*TIM1->ARR)/4095;
     }
 
 }
@@ -74,6 +82,7 @@ void setup(void)
     pinMode(GPIOB,4,1);
     initSerial(9600);
     initPWM();
+    initADC();
 }
 void initSerial(uint32_t baudrate)
 {
@@ -204,4 +213,33 @@ void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
  */
 	TIM1->SR =0; 
     GPIOB->ODR ^= (1 << 4);
+}
+void initADC()
+{
+
+  // Turn on GPIOB
+  RCC->AHBENR |= BIT(17);
+  // Turn on ADC 
+  RCC->APB2ENR |= BIT(9);
+  // Select analog mode for PA0
+  pinMode(GPIOA,0,3);
+  // Begin ADCCalibration
+  ADC1->CR |= BIT(31);
+  // Wait for calibration complete:  
+  while ((ADC1->CR & BIT(31)));
+  // Select Channel 0
+  ADC1->CHSELR |= BIT(0);
+  // Enable the reference voltage
+  ADC->CCR |= BIT(22);	
+  // Enable the ADC
+  ADC1->CR |= BIT(0);  
+}
+int readADC()
+{
+  // Trigger a conversion
+  ADC1->CR |=  BIT(2);
+  // Wait for End of Conversion
+  while ( (ADC1->CR & BIT(2)) );
+  // return result
+  return ADC1->DR;
 }
