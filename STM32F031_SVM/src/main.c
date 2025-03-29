@@ -1,11 +1,12 @@
 #include <stm32f031x6.h>
 #include <errno.h>
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
+#include <stdio.h>
 #define BIT(n) (1 << n)
 #define enable_interrupts() asm(" cpsie i ")
 #define disable_interrupts() asm(" cpsid i ")
 #define CPU_FREQUENCY 48000000
-#define PWM_FREQUENCY 10000
+#define PWM_FREQUENCY (360*50)
 #define OUTPUT_FREQUENCY 50
 #define SCALING_FACTOR 1000
 void initClock(void);
@@ -211,6 +212,11 @@ void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
  * Warning: it is really important to do something that consumes a few clock cycles in this ISR after the interrupt flags are cleared 
  * see : https://developer.arm.com/documentation/ka003795/latest
  */
+    static uint32_t phase_index=0;
+    TIM1->CCR1=(sines[phase_index])+TIM1->ARR/2; 
+    phase_index++;
+    if (phase_index > 359)
+        phase_index = 0;
 	TIM1->SR =0; 
     GPIOB->ODR ^= (1 << 4);
 }
